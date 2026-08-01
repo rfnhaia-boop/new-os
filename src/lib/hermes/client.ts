@@ -4,23 +4,31 @@ const HERMES_HOST = "root@72.62.107.199";
 const SESSION_NAME = "newos-command-center";
 const TIMEOUT_MS = 45_000;
 
+// Quando o NEW OS roda na própria VPS do Hermes (HERMES_MODE=local no .env),
+// fala com ele direto via processo local — sem SSH, sem rede, sem esse ponto de falha.
+const LOCAL_MODE = process.env.HERMES_MODE === "local";
+
 /**
- * Envia um prompt pro Hermes Agent rodando na VPS e retorna a resposta em texto.
- * O prompt vai pelo stdin do SSH (não interpolado em string de comando) pra evitar injeção de shell.
+ * Envia um prompt pro Hermes Agent e retorna a resposta em texto.
+ * O prompt vai pelo stdin (não interpolado em string de comando) pra evitar injeção de shell.
  * Mantém memória de conversa entre chamadas via --continue (mesma sessão nomeada).
- * Tem timeout duro — se travar (rede, VPS, hermes preso), mata o processo e falha rápido
- * em vez de deixar a chamada pendurada pra sempre.
+ * Tem timeout duro — se travar, mata o processo e falha rápido em vez de deixar pendurado.
  */
 export async function askHermes(prompt: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const ssh = spawn("ssh", [
-      "-o",
-      "ConnectTimeout=10",
-      "-o",
-      "BatchMode=yes",
-      HERMES_HOST,
-      `bash -c 'PROMPT="$(cat)"; hermes -z "$PROMPT" --continue ${SESSION_NAME}'`,
-    ]);
+    const command = LOCAL_MODE ? "bash" : "ssh";
+    const args = LOCAL_MODE
+      ? ["-c", `PROMPT="$(cat)"; hermes -z "$PROMPT" --continue ${SESSION_NAME}`]
+      : [
+          "-o",
+          "ConnectTimeout=10",
+          "-o",
+          "BatchMode=yes",
+          HERMES_HOST,
+          `bash -c 'PROMPT="$(cat)"; hermes -z "$PROMPT" --continue ${SESSION_NAME}'`,
+        ];
+
+    const proc = spawn(command, args);
 
     let stdout = "";
     let stderr = "";
@@ -29,21 +37,21 @@ export async function askHermes(prompt: string): Promise<string> {
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      ssh.kill("SIGKILL");
+      proc.kill("SIGKILL");
       reject(new Error("O Hermes demorou demais pra responder (timeout de 45s) — tente de novo."));
     }, TIMEOUT_MS);
 
-    ssh.stdout.on("data", (chunk) => (stdout += chunk.toString()));
-    ssh.stderr.on("data", (chunk) => (stderr += chunk.toString()));
+    proc.stdout.on("data", (chunk) => (stdout += chunk.toString()));
+    proc.stderr.on("data", (chunk) => (stderr += chunk.toString()));
 
-    ssh.on("error", (err) => {
+    proc.on("error", (err) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       reject(err);
     });
 
-    ssh.on("close", (code) => {
+    proc.on("close", (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -54,7 +62,7 @@ export async function askHermes(prompt: string): Promise<string> {
       resolve(stdout.trim());
     });
 
-    ssh.stdin.write(prompt);
-    ssh.stdin.end();
+    proc.stdin.write(prompt);
+    proc.stdin.end();
   });
 }
