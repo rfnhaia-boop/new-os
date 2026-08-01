@@ -3,6 +3,12 @@
 :root {
   --background: #0A0A0A;
   --foreground: #ffffff;
+
+  /* Command Center Agent Colors */
+  --agent-new: #8B5CF6;
+  --agent-next: #F97316;
+  --agent-new-glow: rgba(139, 92, 246, 0.4);
+  --agent-next-glow: rgba(249, 115, 22, 0.4);
 }
 
 @theme inline {
@@ -16,3 +22,210 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* ============================================================================
+   COMMAND CENTER — Keyframe Animations
+   ============================================================================ */
+
+@keyframes cc-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cc-rotate-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes cc-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes cc-breathe-alt {
+  0%, 100% { opacity: 0.7; transform: scale(1.04); }
+  50% { opacity: 0.4; transform: scale(0.96); }
+}
+
+@keyframes cc-pulse-ring {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes cc-scan {
+  0% { top: -4px; }
+  100% { top: 100%; }
+}
+
+@keyframes cc-grain {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -1%); }
+  20% { transform: translate(1%, 0.5%); }
+  30% { transform: translate(-0.5%, 1%); }
+  40% { transform: translate(0.5%, -0.5%); }
+  50% { transform: translate(-1%, 0.5%); }
+  60% { transform: translate(1%, -1%); }
+  70% { transform: translate(0%, 1%); }
+  80% { transform: translate(-0.5%, -0.5%); }
+  90% { transform: translate(0.5%, 0%); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes cc-dash-flow {
+  to { stroke-dashoffset: -40; }
+}
+
+@keyframes cc-particle-travel {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@keyframes cc-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--agent-new-glow)); }
+  50% { filter: drop-shadow(0 0 16px var(--agent-new-glow)); }
+}
+
+@keyframes cc-status-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes cc-type-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes cc-flicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.4; }
+  6% { opacity: 1; }
+  7% { opacity: 0.6; }
+  9% { opacity: 1; }
+  50% { opacity: 1; }
+  52% { opacity: 0.8; }
+  53% { opacity: 1; }
+}
+
+@keyframes cc-core-blast {
+  0% { transform: scale(0.3); opacity: 0; filter: blur(20px); }
+  60% { transform: scale(1.15); opacity: 1; filter: blur(0px); }
+  100% { transform: scale(1); opacity: 1; filter: blur(0px); }
+}
+
+/* ============================================================================
+   COMMAND CENTER — Utility Classes
+   ============================================================================ */
+
+.cc-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cc-grain::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  animation: cc-grain 0.4s steps(3) infinite;
+}
+
+.cc-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.cc-scanline {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.03);
+  animation: cc-scan 12s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cc-breathe {
+  animation: cc-breathe 6s ease-in-out infinite;
+}
+
+.cc-breathe-alt {
+  animation: cc-breathe-alt 8s ease-in-out infinite;
+}
+
+.cc-ring-rotate {
+  animation: cc-rotate 12s linear infinite;
+  transform-origin: center;
+}
+
+.cc-ring-rotate-mid {
+  animation: cc-rotate-reverse 18s linear infinite;
+  transform-origin: center;
+}
+
+.cc-ring-rotate-outer {
+  animation: cc-rotate 30s linear infinite;
+  transform-origin: center;
+}
+
+.cc-core-entrance {
+  animation: cc-core-blast 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.cc-flicker {
+  animation: cc-flicker 5s ease-in-out infinite;
+}
+
+.cc-dash-flow {
+  animation: cc-dash-flow 2s linear infinite;
+}
+
+.cc-type-cursor::after {
+  content: '▊';
+  animation: cc-type-cursor 0.8s step-end infinite;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 2px;
+}
+
+/* ============================================================================
+   COMMAND CENTER V2 — Advanced Animations
+   ============================================================================ */
+
+@keyframes cc-flicker-fast {
+  0%, 100% { opacity: 1; }
+  25% { opacity: 0.9; }
+  26% { opacity: 0.6; }
+  27% { opacity: 0.9; }
+  78% { opacity: 0.95; }
+  79% { opacity: 0.7; }
+  80% { opacity: 0.95; }
+}
+
+@keyframes cc-rotate-segmented {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.cc-hud-rotate {
+  animation: cc-rotate-segmented 20s linear infinite;
+  transform-origin: center;
+}
+
+.cc-flicker-fast {
+  animation: cc-flicker-fast 0.8s ease-in-out infinite;
+}
+
+

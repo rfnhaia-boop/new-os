@@ -8,6 +8,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { DocumentCard } from "@/components/ui/DocumentCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { documentsData, categories, DocumentData } from "@/data";
+import { fetchRealDocuments } from "@/lib/supabase/documents";
 
 export default function DocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,9 +31,14 @@ export default function DocumentsPage() {
       }
       return d;
     });
-    setTimeout(() => {
-      setDocuments(next);
-    }, 0);
+
+    fetchRealDocuments()
+      .then((realDocs) => {
+        setDocuments([...next, ...realDocs]);
+      })
+      .catch(() => {
+        setDocuments(next);
+      });
   }, []);
 
   // Helper to normalize accents and ignore case

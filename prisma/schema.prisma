@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Núcleo — Agentes (Evolution)
+// ============================================================
+
+enum ActorType {
+  human
+  ai_agent
+  system
+}
+
+model Actor {
+  id        String    @id @default(cuid())
+  type      ActorType
+  name      String?
+  role      String? // CEO, COO, CRO, CMO, Head of Research, CDO
+  model     String? // ex: claude-opus-5
+  status    String? // working, waiting, idle
+  avatarUrl String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  createdIngestions OperationalIngestion[] @relation("IngestionActor")
+  approvalSteps     ApprovalStep[]
+  auditLogs         AuditLog[]
+
+  @@map("actors")
+}
+
+model OperationalIngestion {
+  id            String   @id @default(cuid())
+  kind          String? // operational, documentation
+  projectId     String?
+  title         String
+  referenceDate DateTime
+  sourceType    String // conversation, manual, document, system
+  sourceContent String   @db.Text
+  actorId       String
+  actor         Actor    @relation("IngestionActor", fields: [actorId], references: [id])
+  status        String // received, under_review, approved, applied, rejected, partial
+  relatedEntities Json   @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  changes OperationalChange[]
+
+  @@map("operational_ingestions")
+}
+
+model OperationalChange {
+  id               String               @id @default(cuid())
+  ingestionId      String
+  ingestion        OperationalIngestion @relation(fields: [ingestionId], references: [id], onDelete: Cascade)
+  type             String // progress, decision, task, roadmap, architecture, documentation, risk, pending, pattern, cross_project_impact
+  title            String
+  description      String               @db.Text
+  classification   String // completed, in_progress, planned, informational
+  target           Json?
+  requiresApproval Boolean              @default(false)
+
+  @@map("operational_changes")
+}
+
+model MemoryEntry {
+  id              String   @id @default(cuid())
+  title           String
+  description     String   @db.Text
+  category        String // decision, recurring_error, approved_pattern, retrospective_insight
+  tags            String[]
+  relatedEntities Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("memory_entries")
+}
+
+model ImprovementProposal {
+  id              String   @id @default(cuid())
+  title           String
+  description     String   @db.Text
+  status          String // draft, submitted, under_review, approved, rejected, planned, in_progress, implemented, measuring, validated, archived
+  relatedEntities Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  impactAssessments ImpactAssessment[]
+
+  @@map("improvement_proposals")
+}
+
+model ImpactAssessment {
+  id               String               @id @default(cuid())
+  proposalId       String
+  proposal         ImprovementProposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  expectedOutcome  String               @db.Text
+  expectedMetrics  Json                 @default("[]")
+  observedOutcome  String?              @db.Text
+  observedMetrics  Json?
+  assessmentStatus String // not_started, collecting_data, positive, neutral, negative, inconclusive
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@map("impact_assessments")
+}
+
+model ApprovalFlow {
+  id           String         @id @default(cuid())
+  targetEntity Json
+  status       String // active, completed, cancelled
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  steps ApprovalStep[]
+
+  @@map("approval_flows")
+}
+
+model ApprovalStep {
+  id         String       @id @default(cuid())
+  flowId     String
+  flow       ApprovalFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  approverId String
+  approver   Actor        @relation(fields: [approverId], references: [id])
+  status     String // pending, approved, rejected
+  comments   String?      @db.Text
+  updatedAt  DateTime     @updatedAt
+
+  @@map("approval_steps")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  action       String
+  targetEntity Json
+  details      String   @db.Text
+  createdById  String
+  createdBy    Actor    @relation(fields: [createdById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ============================================================
+// Módulos existentes (migrados do mock)
+// ============================================================
+
+enum UserRole {
+  admin
+  manager
+  member
+  viewer
+}
+
+enum UserStatus {
+  active
+  invited
+  inactive
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  avatar       String?
+  role         UserRole
+  status       UserStatus
+  jobTitle     String
+  department   String
+  permissions  Json       @default("[]")
+  createdAt    DateTime   @default(now())
+  lastActiveAt DateTime?
+
+  ownedProjects   Project[]     @relation("ProjectOwner")
+  projectMembers  ProjectMember[]
+  deliverables    Deliverable[]
+  tasks           Task[]
+
+  @@map("users")
+}
+
+model Client {
+  id            String   @id @default(cuid())
+  name          String
+  logo          String?
+  status        String // lead, active, inactive
+  domain        String
+  industry      String
+  revenue       String
+  pipelineStage String // lead, contact, proposal, closing, won, lost
+  notes         String?  @db.Text
+  contacts      Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  proposals ClientProposal[]
+  projects  Project[]
+  tasks     Task[]
+
+  @@map("clients")
+}
+
+model ClientProposal {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title         String
+  value         Float
+  status        String // draft, sent, accepted, declined
+  sentAt        DateTime
+  documentSlug  String?
+
+  @@map("client_proposals")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String   @db.Text
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id])
+  status      String // planning, active, paused, completed, cancelled
+  priority    String // low, medium, high, urgent
+  health      String // on_track, at_risk, delayed
+  ownerId     String?
+  owner       User?    @relation("ProjectOwner", fields: [ownerId], references: [id])
+  startDate   DateTime
+  dueDate     DateTime
+  progress    Int      @default(0)
+  budget      Float?
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members      ProjectMember[]
+  deliverables Deliverable[]
+  tasks        Task[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  role      String
+
+  @@map("project_members")
+}
+
+model Deliverable {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?   @db.Text
+  status        String // pending, in_progress, review, approved, delivered
+  responsibleId String?
+  responsible   User?     @relation(fields: [responsibleId], references: [id])
+  dueDate       DateTime
+  progress      Int?
+  completedAt   DateTime?
+
+  tasks Task[]
+
+  @@map("deliverables")
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?   @db.Text
+  status        String // backlog, todo, in_progress, review, done
+  priority      String // low, medium, high, urgent
+  type          String?
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id])
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id])
+  deliverableId String?
+  deliverable   Deliverable? @relation(fields: [deliverableId], references: [id])
+  responsibleId String?
+  responsible   User?     @relation(fields: [responsibleId], references: [id])
+  dueDate       DateTime?
+  checklist     Json?
+  comments      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("tasks")
+}
+
+model DocumentEntry {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  titulo         String
+  descricao      String   @db.Text
+  categoria      String
+  currentVersion String
+  status         String
+  atualizadoEm   DateTime
+  tempoLeitura   String
+  publico        String[]
+  conteudo       Json
+  relacionados   String[]
+  tags           String[]
+  keywords       String[]
+
+  versions DocumentVersionEntry[]
+
+  @@map("documents")
+}
+
+model DocumentVersionEntry {
+  id         String        @id @default(cuid())
+  documentId String
+  document   DocumentEntry @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    String
+  createdAt  DateTime
+  author     String
+  summary    String        @db.Text
+  changes    String[]
+  status     String // draft, published, archived
+
+  @@map("document_versions")
+}

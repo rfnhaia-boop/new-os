@@ -1,4 +1,4 @@
-import { mockFlowIngestion, mockNexBrandingIngestion, mockFlowControlIngestion, mockFlowConsolidationIngestion, mockNexStrategyIngestion } from "@/data/evolution/mock";
+import { getIngestion } from "@/lib/supabase/ingestions";
 import { OperationalIngestionStatusBadge } from "@/components/evolution/ingestions/OperationalIngestionStatusBadge";
 import { OperationalIngestionSummary } from "@/components/evolution/ingestions/OperationalIngestionSummary";
 import { OperationalChangeGroup } from "@/components/evolution/ingestions/OperationalChangeGroup";
@@ -8,14 +8,15 @@ import { ArrowLeft, CheckCircle2, Settings, Circle, AlertCircle, ShieldAlert, Tr
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export default function IngestionDetailsPage({ params }: { params: { id: string } }) {
-  // Simulando banco
-  let ingestion = null;
-  if (params.id === "ing-flow-001") ingestion = mockFlowIngestion;
-  if (params.id === "ing-nex-001") ingestion = mockNexBrandingIngestion;
-  if (params.id === "ing-flow-control-001") ingestion = mockFlowControlIngestion;
-  if (params.id === "ing-flow-consolidation-001") ingestion = mockFlowConsolidationIngestion;
-  if (params.id === "ing-nex-strategy-001") ingestion = mockNexStrategyIngestion;
+export const dynamic = "force-dynamic";
+
+interface IngestionDetailsPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function IngestionDetailsPage({ params }: IngestionDetailsPageProps) {
+  const { id } = await params;
+  const ingestion = await getIngestion(id);
 
   if (!ingestion) return notFound();
 
@@ -29,9 +30,8 @@ export default function IngestionDetailsPage({ params }: { params: { id: string 
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
       <div className="flex items-start gap-4">
-        <Link 
+        <Link
           href="/evolution/ingestions"
           className="w-10 h-10 rounded-lg bg-[#111111] border border-[#27272A] flex items-center justify-center hover:bg-[#1A1A1A] transition-colors shrink-0"
         >
@@ -54,60 +54,29 @@ export default function IngestionDetailsPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      {/* Summary */}
       <OperationalIngestionSummary ingestion={ingestion} />
 
-      {/* Changes Lists */}
       <div className="bg-[#111111] border border-[#27272A] rounded-xl p-6">
         <h2 className="text-lg font-bold text-white mb-6 border-b border-[#27272A] pb-4">Alterações Estruturadas</h2>
 
-        <OperationalChangeGroup 
-          title="Concluídos" 
-          icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} 
-          changes={completed} 
-        />
-
-        <OperationalChangeGroup 
-          title="Em Andamento" 
-          icon={<Settings className="w-4 h-4 text-amber-500" />} 
-          changes={inProgress} 
-        />
-
-        <OperationalChangeGroup 
-          title="Planejados" 
-          icon={<Circle className="w-4 h-4 text-zinc-500" />} 
-          changes={planned} 
-        />
-
-        <div className="my-12 border-t border-[#27272A]"></div>
-
-        <OperationalChangeGroup 
-          title="Decisões Técnicas" 
-          icon={<AlertCircle className="w-4 h-4 text-indigo-500" />} 
-          changes={decisions} 
-        />
-
-        <OperationalChangeGroup 
-          title="Arquitetura & Entidades" 
-          icon={<Network className="w-4 h-4 text-purple-500" />} 
-          changes={architecture} 
-        />
-
-        <OperationalChangeGroup 
-          title="Padrões Institucionais (Candidatos)" 
-          icon={<ShieldAlert className="w-4 h-4 text-rose-500" />} 
-          changes={patterns} 
-        />
-
-        <OperationalChangeGroup 
-          title="Impactos Cross-Project" 
-          icon={<TrendingUp className="w-4 h-4 text-blue-500" />} 
-          changes={impacts} 
-        />
-
+        {ingestion.changes.length === 0 ? (
+          <p className="text-sm text-zinc-500 italic">
+            Nenhuma alteração estruturada aqui — ou a curadoria por IA não encontrou nada relevante no conteúdo, ou a chave da Anthropic ainda não está configurada. O conteúdo bruto continua abaixo.
+          </p>
+        ) : (
+          <>
+            <OperationalChangeGroup title="Concluídos" icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} changes={completed} />
+            <OperationalChangeGroup title="Em Andamento" icon={<Settings className="w-4 h-4 text-amber-500" />} changes={inProgress} />
+            <OperationalChangeGroup title="Planejados" icon={<Circle className="w-4 h-4 text-zinc-500" />} changes={planned} />
+            <div className="my-12 border-t border-[#27272A]"></div>
+            <OperationalChangeGroup title="Decisões Técnicas" icon={<AlertCircle className="w-4 h-4 text-indigo-500" />} changes={decisions} />
+            <OperationalChangeGroup title="Arquitetura & Entidades" icon={<Network className="w-4 h-4 text-purple-500" />} changes={architecture} />
+            <OperationalChangeGroup title="Padrões Institucionais (Candidatos)" icon={<ShieldAlert className="w-4 h-4 text-rose-500" />} changes={patterns} />
+            <OperationalChangeGroup title="Impactos Cross-Project" icon={<TrendingUp className="w-4 h-4 text-blue-500" />} changes={impacts} />
+          </>
+        )}
       </div>
 
-      {/* Source Content */}
       <OperationalSourceViewer content={ingestion.sourceContent} />
     </div>
   );

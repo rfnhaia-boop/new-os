@@ -16,11 +16,13 @@ import {
   ListTodo,
   BookOpen,
   Network,
+  Orbit,
 } from "lucide-react";
 import { NavigationItem } from "./types";
 
 export const navigationItems: NavigationItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Central de Comando", href: "/command-center", icon: Orbit },
   { name: "Empresa", href: "/company", icon: Building2 },
   { name: "NEX", href: "/nex", icon: Cpu },
   { name: "Produtos", href: "/produtos", icon: Package },

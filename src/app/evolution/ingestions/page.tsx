@@ -1,10 +1,12 @@
 import { OperationalIngestionCard } from "@/components/evolution/ingestions/OperationalIngestionCard";
-import { mockFlowIngestion, mockNexBrandingIngestion, mockFlowControlIngestion, mockFlowConsolidationIngestion, mockNexStrategyIngestion } from "@/data/evolution/mock";
+import { listIngestions } from "@/lib/supabase/ingestions";
 import Link from "next/link";
 import { Filter } from "lucide-react";
 
-export default function IngestionsListPage() {
-  const ingestions = [mockFlowIngestion, mockNexBrandingIngestion, mockFlowControlIngestion, mockFlowConsolidationIngestion, mockNexStrategyIngestion];
+export const dynamic = "force-dynamic";
+
+export default async function IngestionsListPage() {
+  const ingestions = await listIngestions();
 
   return (
     <div className="space-y-6">
@@ -13,7 +15,7 @@ export default function IngestionsListPage() {
           <h2 className="text-xl font-bold text-white mb-1">Ingestões Operacionais</h2>
           <p className="text-sm text-zinc-400">Resumos processados das operações e reuniões.</p>
         </div>
-        <Link 
+        <Link
           href="/evolution/ingestions/new"
           className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
@@ -33,11 +35,18 @@ export default function IngestionsListPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {ingestions.map((ingestion) => (
-          <OperationalIngestionCard key={ingestion.id} ingestion={ingestion} />
-        ))}
-      </div>
+      {ingestions.length === 0 ? (
+        <div className="border border-dashed border-[#27272A] rounded-xl py-16 text-center">
+          <p className="text-sm text-zinc-400">Nenhuma ingestão ainda.</p>
+          <p className="text-xs text-zinc-500 mt-1">Clique em &quot;Nova Ingestão&quot; pra registrar a primeira.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {ingestions.map((ingestion) => (
+            <OperationalIngestionCard key={ingestion.id} ingestion={ingestion} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
