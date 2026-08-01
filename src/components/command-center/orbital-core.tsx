@@ -217,11 +217,11 @@ export function OrbitalCore({ bootPhase, cx, cy, isSpeaking }: OrbitalCoreProps)
 
   const containerVariants = {
     hidden: { scale: 0.2, opacity: 0, rotateZ: -60 },
-    visible: { 
-      scale: 1, 
-      opacity: 1, 
+    visible: {
+      scale: 1,
+      opacity: 1,
       rotateZ: 0,
-      transition: { type: "spring", damping: 15, stiffness: 60, mass: 1.5, duration: 1.5 }
+      transition: { type: "spring" as const, damping: 15, stiffness: 60, mass: 1.5, duration: 1.5 }
     }
   };
 
