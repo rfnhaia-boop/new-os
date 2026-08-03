@@ -68,17 +68,25 @@ export default function CommandCenterPage() {
     const ptVoice = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("pt"));
     if (ptVoice) utterance.voice = ptVoice;
 
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(safetyTimer);
+      setPhase("idle");
+      setCaption("");
+      if (loopOnRef.current) startListeningRef.current();
+    };
+
     utterance.onstart = () => setPhase("speaking");
-    utterance.onend = () => {
-      setPhase("idle");
-      setCaption("");
-      if (loopOnRef.current) startListeningRef.current();
-    };
-    utterance.onerror = () => {
-      setPhase("idle");
-      setCaption("");
-      if (loopOnRef.current) startListeningRef.current();
-    };
+    utterance.onend = finish;
+    utterance.onerror = finish;
+
+    // Rede de segurança: se "onend" nunca disparar (falha do navegador, ambiente
+    // sem áudio, etc), destrava sozinho depois de um tempo estimado pelo tamanho
+    // do texto, em vez de ficar preso em "falando" pra sempre.
+    const estimatedMs = Math.min(Math.max(text.length * 90, 4000), 30000);
+    const safetyTimer = setTimeout(finish, estimatedMs);
 
     window.speechSynthesis.speak(utterance);
   }, []);
@@ -149,15 +157,18 @@ export default function CommandCenterPage() {
 
     recognition.onerror = (event) => {
       const errorType = (event as { error?: string }).error;
-      setCaption("");
-      // "no-speech"/"aborted" são normais num loop contínuo — só re-escuta.
+      // "no-speech"/"aborted" são normais num loop contínuo — só re-escuta, sem drama.
       // Erros reais (ex: permissão negada) param o loop pra não ficar tentando pra sempre.
       if (errorType === "not-allowed" || errorType === "service-not-allowed") {
         loopOnRef.current = false;
         setLoopOn(false);
         setPhase("idle");
+        setCaption("Microfone bloqueado — permite o acesso e toca no mic pra tentar de novo.");
+        setCaptionRole("hermes");
+        setTimeout(() => setCaption(""), 5000);
         return;
       }
+      setCaption("");
       setPhase("idle");
       if (loopOnRef.current) startListeningRef.current();
     };
@@ -174,6 +185,7 @@ export default function CommandCenterPage() {
     } catch {
       // já estava escutando, ou mic bloqueado — evita derrubar a tela por causa disso.
       setPhase("idle");
+      setCaption("");
     }
   }, [handleSend]);
 
