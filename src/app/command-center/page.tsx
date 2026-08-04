@@ -43,6 +43,7 @@ export default function CommandCenterPage() {
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const loopOnRef = useRef(true);
   const startListeningRef = useRef<() => void>(() => {});
+  const errorStreakRef = useRef(0); // trava o loop se o mic ficar dando erro em sequência, evita loop infinito
 
   const corePos = { x: 300, y: 300 };
 
@@ -144,6 +145,7 @@ export default function CommandCenterPage() {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
+      errorStreakRef.current = 0;
       const results = (event as { results: { transcript: string; isFinal: boolean }[][] }).results;
       const flat = results as unknown as { 0: { transcript: string }; isFinal: boolean }[];
       const last = flat[flat.length - 1];
@@ -155,21 +157,35 @@ export default function CommandCenterPage() {
       }
     };
 
+    const pauseLoop = (message: string) => {
+      loopOnRef.current = false;
+      setLoopOn(false);
+      setPhase("idle");
+      setCaption(message);
+      setCaptionRole("hermes");
+      setTimeout(() => setCaption(""), 5000);
+    };
+
     recognition.onerror = (event) => {
       const errorType = (event as { error?: string }).error;
-      // "no-speech"/"aborted" são normais num loop contínuo — só re-escuta, sem drama.
-      // Erros reais (ex: permissão negada) param o loop pra não ficar tentando pra sempre.
+
       if (errorType === "not-allowed" || errorType === "service-not-allowed") {
-        loopOnRef.current = false;
-        setLoopOn(false);
-        setPhase("idle");
-        setCaption("Microfone bloqueado — permite o acesso e toca no mic pra tentar de novo.");
-        setCaptionRole("hermes");
-        setTimeout(() => setCaption(""), 5000);
+        pauseLoop("Microfone bloqueado — permite o acesso e toca no mic pra tentar de novo.");
         return;
       }
+
+      // "no-speech"/"aborted" são normais num loop contínuo — em geral só re-escuta, sem drama.
+      // Mas se ficar dando erro em sequência sem nunca ouvir nada de verdade, é sinal de que
+      // algo está quebrado nesse ambiente — pausa em vez de ficar tentando pra sempre.
+      errorStreakRef.current += 1;
       setCaption("");
       setPhase("idle");
+
+      if (errorStreakRef.current >= 3) {
+        pauseLoop("Não consegui ouvir direito — toca no mic quando quiser tentar de novo.");
+        return;
+      }
+
       if (loopOnRef.current) startListeningRef.current();
     };
 
@@ -202,6 +218,7 @@ export default function CommandCenterPage() {
       setPhase("idle");
       setCaption("");
     } else {
+      errorStreakRef.current = 0;
       loopOnRef.current = true;
       setLoopOn(true);
       startListening();
