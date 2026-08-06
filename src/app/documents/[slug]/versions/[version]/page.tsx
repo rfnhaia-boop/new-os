@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/ui/PageContainer";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { VersionBadge } from "@/components/ui/version-badge";
 import { documentsData } from "@/data";
+import { fetchRealDocumentBySlug } from "@/lib/supabase/documents";
 
 interface VersionPageProps {
   params: Promise<{
@@ -29,7 +30,7 @@ export async function generateStaticParams() {
 export default async function VersionPage({ params }: VersionPageProps) {
   const { slug, version } = await params;
 
-  const doc = documentsData.find((d) => d.slug === slug);
+  const doc = documentsData.find((d) => d.slug === slug) ?? (await fetchRealDocumentBySlug(slug));
   if (!doc) {
     notFound();
   }
